@@ -1,4 +1,17 @@
 using System.Drawing.Design;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Reflection.Emit;
+using System.Xml.Serialization;
+using Microsoft.VisualBasic;
 
 namespace WinFormsApp1
 {
@@ -13,146 +26,251 @@ namespace WinFormsApp1
         int borderY;
 
         int[,] map;
-
+        int linesRemoved;
+        int score;
         Figure currentFigure;
 
+        int fallingSpeedNormal;
+        int fallingSpeedFast;
+        int fallingSpeedNormalLimit;
+        int fallingSpeedNormalStepIncrease;
         public Tetris()
         {
             InitializeComponent();
+            this.KeyUp += new KeyEventHandler(KeyFunc);
             Init();
+
         }
 
         public void Init()
         {
-            sizeSquare = 25;
 
+            sizeSquare = 25;
             mapWidth = 8;
             mapHeight = 16;
 
             borderX = 50;
             borderY = 20;
-            
-            map = new int[mapWidth,   mapHeight];
+            map = new int[mapWidth, mapHeight];
+            linesRemoved = 0;
+            score = 0;
 
             currentFigure = new Figure(3,0);
 
-            this.KeyUp += new KeyEventHandler(keyFunc);
+            
+            fallingSpeedNormal = 300;
+            fallingSpeedNormalLimit = 100;
+            fallingSpeedNormalStepIncrease = 10;
+            fallingSpeedFast = 40 ;
 
-            timer1.Interval = 100;
-            timer1.Tick += new EventHandler(update);
-            timer1.Start();
+            timerFalling.Interval = fallingSpeedNormal;
+            timerFalling.Tick += new EventHandler(Update);
+            timerFalling.Start();
+
+            UpdateLabels();
 
 
             Invalidate();
         }
 
-        private void keyFunc(object? sender, KeyEventArgs e)
-        {
-            switch (e.KeyCode)
-            {
-                case Keys.Right:
-                    ResetArea();
-                    currentFigure.MoveRight();
-                    Merge();
-                    Invalidate();
-                    break;
-                case Keys.Left:
-                    ResetArea();
-
-                    currentFigure.MoveLeft();
-                    Merge();
-                    Invalidate();
-                    break;
-            }
-        }
-
-        private void update(object? sender, EventArgs e)
+        private void KeyFunc(object? sender, KeyEventArgs key)
         {
             ResetArea();
-            if (!Collide())
-            {
-                currentFigure.MoveDown();
 
-            }
-            else
+            switch (key.KeyCode)
             {
-                Merge();
-                currentFigure = new Figure(3, 0);
+                case Keys.Right:
+                    if (!Collide(key.KeyCode))
+                        currentFigure.MoveRight();
+                    break;
+                case Keys.Left:
+                    if (!Collide(key.KeyCode))
+                        currentFigure.MoveLeft();
+                    break;
+                case Keys.Up:
+                    if (!Collide(key.KeyCode))
+                        currentFigure.Rorate();
+                    break;
+                case Keys.Down:
+                    timerFalling.Interval = fallingSpeedFast;
+                    break;
             }
             Merge();
             Invalidate();
         }
 
+        private void Update(object? sender, EventArgs e)
+        {
+            ResetArea(); 
+            if (!Collide())
+                currentFigure.MoveDown();
+            else
+            {
+                timerFalling.Interval = fallingSpeedNormal;
+                Merge();
+                SliceMap();
+                currentFigure = new Figure(3, 0);
+                if (Collide())
+                {
+                    FinisAndRestartGame();
+                }
+            }
+            Merge();
+            Invalidate();
+        }
+        public void ClearMap()
+        {
+            for (int i = 0; i < mapWidth; i++)
+                for (int j = 0; j < mapHeight; j++)
+                    map[i, j] = 0;
+        }
+
+        public void FinisAndRestartGame()
+        {
+            ClearMap();
+            timerFalling.Tick -= new EventHandler(Update);
+            timerFalling.Stop();
+            MessageBox.Show("Ваш результат: " + score);
+            Init();
+        }
+
         public void Merge()
         {
             for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-            {
-                for(int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                {
-                    if (currentFigure.matrix[i - currentFigure.x, j - currentFigure.y] !=0)
-                    map[i, j] = currentFigure.matrix[i - currentFigure.x, j - currentFigure.y];
-                }
-            }
+                for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
+                   if (currentFigure.matrix[ j - currentFigure.y, i - currentFigure.x] != 0)
+                        map[i, j] = currentFigure.matrix[j - currentFigure.y,i - currentFigure.x];
         }
         public void ResetArea()
         {
             for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-            {
                 for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                {
                    if (i >= 0 && j >= 0 && i < mapWidth && j < mapHeight)
-                        map[i, j] = 0;
-                }
-            }
+                        if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
+                            map[i, j] = 0;
         }
         public bool Collide()
         {
-            for (int i = currentFigure.x ; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-            {
-                for (int j = currentFigure.y + currentFigure.sizeMatrix - 1; j >= currentFigure.y + currentFigure.x; j-- )
-                {
-                    if (currentFigure.matrix[i - currentFigure.x, j - currentFigure.y] != 0)
+            for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
+                for (int j = currentFigure.y + currentFigure.sizeMatrix - 1; j >= currentFigure.y; j--) 
+                    if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
                     {
                         if (j + 1 == mapHeight)
                             return true;
-                        if (map[i, j] != 0)
+
+                        if (map[i, j+1] != 0)
                             return true;
+
+                       
                     }
-                }
-            }
+                    
             return false;
         }
 
-        public void DrawMap(Graphics e)
+        public bool Collide(Keys keyCode)
         {
-            for (int i = 0; i < mapWidth; i++)
-            {
-                for (int j = 0; j <  mapHeight ; j++)
-                {
-                    if (map[i, j] == 1)
+            for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
+                for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
+                    try
                     {
-                        e.FillRectangle(Brushes.Red, new Rectangle(borderX + i * sizeSquare, borderY + j * sizeSquare, sizeSquare - 1, sizeSquare - 1));
+                        if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
+                        {
+                            if (keyCode == Keys.Left && i == 0)
+                                return true;
+
+                            if (keyCode == Keys.Right && i == mapWidth - 1)
+                                return true;
+                        }
+                        else if (keyCode == Keys.Up && (i < 0 || i >= mapWidth || map[i, j] != currentFigure.matrix[j - currentFigure.y, i - currentFigure.x]))
+                        {
+                            return true;
+                        }
+                    }
+                    catch { }
+            return false;
+        }
+
+        public void SliceMap()
+        {
+            int curLinesRemoved = 0;
+
+            for (int i = 0, count = 0; i < mapHeight; i++, count = 0)
+            {
+                for (int j = 0; j < mapWidth; j++)
+                {
+                    if (map[j,i] != 0)
+                        count++;
+                }
+                if (count == mapWidth)
+                {
+                    curLinesRemoved++;
+
+                    for (int o = i; o > 0; o--)
+                    {
+                        for (int k = 0; k < mapWidth; k++)
+                        {
+                            map[k,o] = map[k,o-1];
+                        }
                     }
                 }
             }
+
+            for (int i = 1; i <= curLinesRemoved; i++)
+            {
+                score += 10 * i; 
+            }
+            linesRemoved += curLinesRemoved;
+
+
+            IncreaseSpeed();
+
+            UpdateLabels();
         }
-        public void DrawGrid(Graphics g)
+        public void IncreaseSpeed() 
+        {
+            if (fallingSpeedNormal > fallingSpeedNormalLimit)
+                fallingSpeedNormal -= fallingSpeedNormalStepIncrease;
+        }
+
+        public void UpdateLabels()
+        {
+            scoreLabel.Text = $"Score: {score}";
+            linesLabel.Text = $"Score: {linesRemoved}";
+        }
+
+        public void DrawMap(Graphics graphics)
+        {
+            for (int i = 0; i < mapWidth; i++)
+                for (int j = 0; j < mapHeight; j++) 
+                    if (map[i, j] != 0)
+                        graphics.FillRectangle(GetBrush(map[i, j]), new Rectangle(borderX + i * sizeSquare, borderY + j * sizeSquare, sizeSquare - 1, sizeSquare - 1));
+        }
+        public void DrawGrid(Graphics graphics)
         {
             for (int i = 0; i <= mapHeight; i++)
-            {
-                g.DrawLine(Pens.Black, new Point(borderX, borderY + i * sizeSquare), new Point(borderX + mapWidth * sizeSquare, borderY + i * sizeSquare));
-            }
-            for (int i = 0; i <= mapWidth ; i++)
-            {
-                g.DrawLine(Pens.Black, new Point(borderX + i * sizeSquare, borderY), new Point(borderX + i * sizeSquare, borderY + mapHeight * sizeSquare));
+                graphics.DrawLine(Pens.Black, new Point(borderX, borderY + i * sizeSquare), new Point(borderX + mapWidth * sizeSquare, borderY + i * sizeSquare));
 
-            }
+            for (int i = 0; i <= mapWidth ; i++)
+                graphics.DrawLine(Pens.Black, new Point(borderX + i * sizeSquare, borderY), new Point(borderX + i * sizeSquare, borderY + mapHeight * sizeSquare));
         }
 
         private void OnPaint(object sender, PaintEventArgs e)
         {
-            DrawGrid(e.Graphics);
+           DrawGrid(e.Graphics);
             DrawMap(e.Graphics);
+        }
+
+        public Brush GetBrush(int code)
+        {
+            switch (code)
+            {
+                case 1: return Brushes.Red;
+                case 2: return Brushes.Yellow;
+                case 3: return Brushes.Green;
+                case 4: return Brushes.Blue;
+                case 5: return Brushes.Purple;
+                default: return Brushes.Brown;
+            }
         }
     }
 }

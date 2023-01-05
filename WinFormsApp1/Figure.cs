@@ -13,38 +13,83 @@ namespace WinFormsApp1
         public int[,] matrix;
         public int sizeMatrix;
 
-        int mapWidth = 8;
-        int mapHeight = 16;
 
-        public Figure(int _x, int _y)
+        public int[,] tetr1 = new int[4, 4]{
+            {0,0,1,0  },
+            {0,0,1,0  },
+            {0,0,1,0  },
+            {0,0,1,0  },
+        };
+
+        public int[,] tetr2 = new int[3, 3]{
+            {0,2,0  },
+            {0,2,2 },
+            {0,0,2 },
+        };
+
+        public int[,] tetr3 = new int[3, 3]{
+            {0,0,0  },
+            {3,3,3 },
+            {0,3,0 },
+        };
+
+        public int[,] tetr4 = new int[3, 3]{
+            { 4,0,0  },
+            {4,0,0 },
+            {4,4,0 },
+        };
+        public int[,] tetr5 = new int[2, 2]{
+            { 5,5  },
+            {5,5 },
+        };
+        public Figure(int x, int y)
         {
-            x = _x;
-            y = _y;
-            matrix = new int[3,3]
+            this.x = x;
+            this.y = y;
+            matrix = GenerateMatrix();
+            sizeMatrix = (int)Math.Sqrt(matrix.Length);
+        }
+        public int[,] GenerateMatrix()
+        {
+            int[,] matrix = tetr1;
+            Random r = new Random();
+            switch (r.Next(1, 6))
             {
-                { 0, 1, 0},
-                { 0, 1, 1},
-                { 0, 0, 1},
-            };
-            sizeMatrix = 3;
+                case 1:
+                    matrix = tetr1;
+                    break;
+                case 2:
+                    matrix = tetr2;
+                    break;
+                case 3:
+                    matrix = tetr3;
+                    break;
+                case 4:
+                    matrix = tetr4;
+                    break;
+                case 5:
+                    matrix = tetr5;
+                    break;
+            }
+            return matrix;
         }
 
-        public void MoveDown() 
-        {
-            if (y < mapHeight - sizeMatrix)
-                y++;
-        }
-            
 
-        public void MoveRight()
+
+        public void MoveDown() => y++;
+        public void MoveRight() => x++;
+        public void MoveLeft() => x--;
+        public void Rorate()
         {
-            if (x < mapWidth - sizeMatrix)
-                x++;
-        }
-        public void MoveLeft()
-        {
-            if (x > 0)
-                x--;
+            int[,] tempMatrix = new int[sizeMatrix, sizeMatrix];
+            for (int i = 0; i < sizeMatrix; i++)
+            {
+                for (int j = 0; j < sizeMatrix; j++)
+                {
+                    tempMatrix[i, j] = matrix[j, (sizeMatrix - 1) - i];
+                }
+            }
+            matrix = tempMatrix;
         }
     }
 }
