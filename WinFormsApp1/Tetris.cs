@@ -38,39 +38,47 @@ namespace WinFormsApp1
         {
             InitializeComponent();
             this.KeyUp += new KeyEventHandler(KeyFunc);
-            Init();
 
         }
 
-        public void Init()
+        public void StartGame()
         {
 
             sizeSquare = 25;
-            mapWidth = 8;
-            mapHeight = 16;
+            mapWidth = int.Parse(sizeFieldXTextBox.Text);
+            mapHeight = int.Parse(sizeFieldYTextBox.Text);
 
-            borderX = 50;
+            borderX = 200;
             borderY = 20;
             map = new int[mapWidth, mapHeight];
             linesRemoved = 0;
             score = 0;
 
-            currentFigure = new Figure(3,0);
+            currentFigure = new Figure(mapWidth/2,0);
 
-            
-            fallingSpeedNormal = 300;
+
+            StartTime();
+            UpdateLabels();
+            Invalidate();
+        }
+        public void StopGame()
+        {
+            ClearMap();
+            timerFalling.Tick -= new EventHandler(Update);
+            timerFalling.Stop();
+        }
+
+        public void StartTime()
+        {
+            fallingSpeedNormal = 500;
             fallingSpeedNormalLimit = 100;
             fallingSpeedNormalStepIncrease = 10;
-            fallingSpeedFast = 40 ;
+            fallingSpeedFast = 40;
 
             timerFalling.Interval = fallingSpeedNormal;
             timerFalling.Tick += new EventHandler(Update);
             timerFalling.Start();
 
-            UpdateLabels();
-
-
-            Invalidate();
         }
 
         private void KeyFunc(object? sender, KeyEventArgs key)
@@ -109,10 +117,11 @@ namespace WinFormsApp1
                 timerFalling.Interval = fallingSpeedNormal;
                 Merge();
                 SliceMap();
-                currentFigure = new Figure(3, 0);
+                currentFigure = new Figure(mapWidth / 2, 0);
                 if (Collide())
                 {
-                    FinisAndRestartGame();
+                    StopGame();
+                    StartGame();
                 }
             }
             Merge();
@@ -125,14 +134,7 @@ namespace WinFormsApp1
                     map[i, j] = 0;
         }
 
-        public void FinisAndRestartGame()
-        {
-            ClearMap();
-            timerFalling.Tick -= new EventHandler(Update);
-            timerFalling.Stop();
-            MessageBox.Show("Ваш результат: " + score);
-            Init();
-        }
+
 
         public void Merge()
         {
@@ -160,8 +162,6 @@ namespace WinFormsApp1
 
                         if (map[i, j+1] != 0)
                             return true;
-
-                       
                     }
                     
             return false;
@@ -235,7 +235,7 @@ namespace WinFormsApp1
         public void UpdateLabels()
         {
             scoreLabel.Text = $"Score: {score}";
-            linesLabel.Text = $"Score: {linesRemoved}";
+            linesLabel.Text = $"Lines: {linesRemoved}";
         }
 
         public void DrawMap(Graphics graphics)
@@ -271,6 +271,59 @@ namespace WinFormsApp1
                 case 5: return Brushes.Purple;
                 default: return Brushes.Brown;
             }
+        }
+
+
+        private void SizeFieldXTextBox_KeyPress(object sender, KeyPressEventArgs e) =>
+            IsNumber(e);
+
+        private void SizeFieldYTextBox_KeyPress(object sender, KeyPressEventArgs e) =>
+            IsNumber(e);
+        private void IsNumber(KeyPressEventArgs e)
+        {
+            char number = e.KeyChar;
+            if (!Char.IsDigit(number) && number != 8)
+                e.Handled = true;
+        }
+
+        private void startButton_Click(object sender, EventArgs e)
+        {
+            if (CheckFieldSize())
+            {
+                ChangeStateStartAndStopButtons();
+                StartGame();
+            }
+           
+        }
+        private bool CheckFieldSize()
+        {
+            int minSizeX = 15;
+            int minSizeY = 20;
+
+            if (int.Parse(sizeFieldXTextBox.Text) >= minSizeX && int.Parse(sizeFieldYTextBox.Text) >= minSizeY)
+            {
+                errorLabel.Visible = false;
+                return true;
+            }
+            errorLabel.Visible = true;
+            return false;
+        }
+
+        private void stopButton_Click(object sender, EventArgs e)
+        {
+            ChangeStateStartAndStopButtons();
+            StopGame();
+        }
+
+        private void ChangeStateStartAndStopButtons()
+        {
+            stopButton.Enabled = !stopButton.Enabled;
+            startButton.Enabled = !startButton.Enabled;
+        }
+
+        private void errorLabel_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
