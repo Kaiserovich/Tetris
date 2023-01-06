@@ -13,28 +13,13 @@ using System.Reflection.Emit;
 using System.Xml.Serialization;
 using Microsoft.VisualBasic;
 using System.Diagnostics;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace WinFormsApp1
 {
     public partial class Tetris : Form
     {
-        int sizeSquare;
-
-        int mapWidth;
-        int mapHeight;
-
-        int borderX;
-        int borderY;
-
-        int[,] map;
-        int linesRemoved;
-        int score;
-        Figure currentFigure;
-
-        int fallingSpeedNormal;
-        int fallingSpeedFast;
-        int fallingSpeedNormalLimit;
-        int fallingSpeedNormalStepIncrease;
+        
         public Tetris()
         {
             InitializeComponent();
@@ -42,239 +27,104 @@ namespace WinFormsApp1
 
         }
 
-        public void StartGame()
+        private void StartGame()
         {
+            MapController.sizeSquare = 25;
+            MapController.mapWidth = int.Parse(sizeFieldXTextBox.Text);
+            MapController.mapHeight = int.Parse(sizeFieldYTextBox.Text);
 
-            sizeSquare = 25;
-            mapWidth = int.Parse(sizeFieldXTextBox.Text);
-            mapHeight = int.Parse(sizeFieldYTextBox.Text);
+            MapController.borderX = 200;
+            MapController.borderY = 150;
+            MapController.map = new int[MapController.mapWidth, MapController.mapHeight];
+            MapController.linesRemoved = 0;
+            MapController.score = 0;
 
-            borderX = 200;
-            borderY = 150;
-            map = new int[mapWidth, mapHeight];
-            linesRemoved = 0;
-            score = 0;
+            MapController.currentFigure = new Figure(MapController.mapWidth / 2, 0);
 
-            currentFigure = new Figure(mapWidth / 2, 0);
-
-            fallingSpeedNormal = 500;
-            fallingSpeedNormalLimit = 100;
-            fallingSpeedNormalStepIncrease = 10;
-            fallingSpeedFast = 40;
+            MapController.fallingSpeedNormal = 500;
+            MapController.fallingSpeedNormalLimit = 100;
+            MapController.fallingSpeedNormalStepIncrease = 10;
+            MapController.fallingSpeedFast = 40;
 
             StartTime();
             UpdateLabels();
             Invalidate();
         }
-        public void StopGame()
+        private void StopGame()
         {
-            ClearMap();
+            MapController.ClearMap();
             StopTime();
         }
 
-        public void StartTime()
+        private void StartTime()
         {
-            timerFalling.Interval = fallingSpeedNormal;
+            timerFalling.Interval = MapController.fallingSpeedNormal;
             timerFalling.Tick += new EventHandler(Update);
             timerFalling.Start();
         }
-
-        public void StopTime()
+        private void StopTime()
         {
             timerFalling.Tick -= new EventHandler(Update);
             timerFalling.Stop();
         }
-
         private void KeyFunc(object? sender, KeyEventArgs key)
         {
-            ResetArea();
+            MapController.ResetArea();
 
             switch (key.KeyCode)
             {
                 case Keys.Right:
-                    if (!Collide(key.KeyCode))
-                        currentFigure.MoveRight();
+                    if (!MapController.Collide(key.KeyCode))
+                        MapController.currentFigure.MoveRight();
                     break;
                 case Keys.Left:
-                    if (!Collide(key.KeyCode))
-                        currentFigure.MoveLeft();
+                    if (!MapController.Collide(key.KeyCode))
+                        MapController.currentFigure.MoveLeft();
                     break;
                 case Keys.Up:
-                    if (!Collide(key.KeyCode))
-                        currentFigure.Rorate();
+                    if (!MapController.Collide(key.KeyCode))
+                        MapController.currentFigure.Rorate();
                     break;
                 case Keys.Down:
-                    timerFalling.Interval = fallingSpeedFast;
+                    timerFalling.Interval = MapController.fallingSpeedFast;
                     break;
             }
-            Merge();
+            MapController.Merge();
             Invalidate();
         }
-
         private void Update(object? sender, EventArgs e)
         {
-            ResetArea();
-            if (!Collide())
-                currentFigure.MoveDown();
+            MapController.ResetArea();
+            if (!MapController.Collide())
+                MapController.currentFigure.MoveDown();
             else
             {
-                timerFalling.Interval = fallingSpeedNormal;
-                Merge();
-                SliceMap();
-                currentFigure = new Figure(mapWidth / 2, 0);
-                if (Collide())
+                timerFalling.Interval = MapController.fallingSpeedNormal;
+                MapController.Merge();
+                MapController.SliceMap();
+                UpdateLabels();
+                MapController.currentFigure = new Figure(MapController.mapWidth / 2, 0);
+                if (MapController.Collide())
                 {
                     StopGame();
                     StartGame();
                 }
             }
-            Merge();
+            MapController.Merge();
             Invalidate();
         }
-        public void ClearMap()
+        private void UpdateLabels()
         {
-            for (int i = 0; i < mapWidth; i++)
-                for (int j = 0; j < mapHeight; j++)
-                    map[i, j] = 0;
-        }
-
-
-
-        public void Merge()
-        {
-            for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-                for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                    if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
-                        map[i, j] = currentFigure.matrix[j - currentFigure.y, i - currentFigure.x];
-        }
-        public void ResetArea()
-        {
-            for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-                for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                    if (i >= 0 && j >= 0 && i < mapWidth && j < mapHeight)
-                        if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
-                            map[i, j] = 0;
-        }
-        public bool Collide()
-        {
-            for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-                for (int j = currentFigure.y + currentFigure.sizeMatrix - 1; j >= currentFigure.y; j--)
-                    if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
-                    {
-                        if (j + 1 == mapHeight)
-                            return true;
-
-                        if (map[i, j + 1] != 0)
-                            return true;
-                    }
-
-            return false;
-        }
-
-        public bool Collide(Keys keyCode)
-        {
-            for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-                for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                    try
-                    {
-                        if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
-                        {
-                            if (keyCode == Keys.Left && i == 0)
-                                return true;
-
-                            if (keyCode == Keys.Right && i == mapWidth - 1)
-                                return true;
-                        }
-                        else if (keyCode == Keys.Up && (i < 0 || i >= mapWidth || map[i, j] != currentFigure.matrix[j - currentFigure.y, i - currentFigure.x]))
-                        {
-                            return true;
-                        }
-                    }
-                    catch { }
-            return false;
-        }
-
-        public void SliceMap()
-        {
-            int curLinesRemoved = 0;
-
-            for (int i = 0, count = 0; i < mapHeight; i++, count = 0)
-            {
-                for (int j = 0; j < mapWidth; j++)
-                {
-                    if (map[j, i] != 0)
-                        count++;
-                }
-                if (count == mapWidth)
-                {
-                    curLinesRemoved++;
-
-                    for (int o = i; o > 0; o--)
-                    {
-                        for (int k = 0; k < mapWidth; k++)
-                        {
-                            map[k, o] = map[k, o - 1];
-                        }
-                    }
-                }
-            }
-
-            for (int i = 1; i <= curLinesRemoved; i++)
-            {
-                score += 10 * i;
-            }
-            linesRemoved += curLinesRemoved;
-
-            IncreaseSpeed();
-
-            UpdateLabels();
-        }
-        public void IncreaseSpeed()
-        {
-            if (fallingSpeedNormal > fallingSpeedNormalLimit)
-                fallingSpeedNormal -= fallingSpeedNormalStepIncrease;
-        }
-
-        public void UpdateLabels()
-        {
-            scoreLabel.Text = $"Score: {score}";
-            linesLabel.Text = $"Lines: {linesRemoved}";
-        }
-
-        public void DrawMap(Graphics graphics)
-        {
-            for (int i = 0; i < mapWidth; i++)
-                for (int j = 0; j < mapHeight; j++)
-                    if (map[i, j] != 0)
-                        graphics.FillRectangle(GetBrush(map[i, j]), new Rectangle(borderX + i * sizeSquare, borderY + j * sizeSquare, sizeSquare - 1, sizeSquare - 1));
-        }
-        public void DrawGrid(Graphics graphics)
-        {
-            for (int i = 0; i <= mapHeight; i++)
-                graphics.DrawLine(Pens.Black, new Point(borderX, borderY + i * sizeSquare), new Point(borderX + mapWidth * sizeSquare, borderY + i * sizeSquare));
-
-            for (int i = 0; i <= mapWidth; i++)
-                graphics.DrawLine(Pens.Black, new Point(borderX + i * sizeSquare, borderY), new Point(borderX + i * sizeSquare, borderY + mapHeight * sizeSquare));
+            scoreLabel.Text = $"Score: {MapController.score}";
+            linesLabel.Text = $"Lines: {MapController.linesRemoved}";
         }
 
         private void OnPaint(object sender, PaintEventArgs e)
         {
-            DrawGrid(e.Graphics);
-            DrawMap(e.Graphics);
+            MapController.DrawGrid(e.Graphics);
+            MapController.DrawMap(e.Graphics);
         }
-
-        public Brush GetBrush(int code)
-        {
-            switch (code)
-            {
-                case 1: return Brushes.Red;
-                case 2: return Brushes.Yellow;
-                case 3: return Brushes.Green;
-                case 4: return Brushes.Blue;
-                case 5: return Brushes.Purple;
-                default: return Brushes.Brown;
-            }
-        }
+       
 
 
         private void SizeFieldXTextBox_KeyPress(object sender, KeyPressEventArgs e) =>
@@ -317,7 +167,10 @@ namespace WinFormsApp1
             ChangeStateStartAndStopButtons();
             StopGame();
         }
-
+        private void CreateNewBlockButton_Click(object sender, EventArgs e)
+        {
+            CreateKindOfFigere();
+        }
         private void ChangeStateStartAndStopButtons()
         {
             stopButton.Enabled = !stopButton.Enabled;
@@ -333,11 +186,6 @@ namespace WinFormsApp1
                 { Convert.ToInt32(checkBox9.Checked),Convert.ToInt32(checkBox10.Checked),Convert.ToInt32(checkBox11.Checked),Convert.ToInt32(checkBox12.Checked) },
                 { Convert.ToInt32(checkBox13.Checked),Convert.ToInt32(checkBox14.Checked),Convert.ToInt32(checkBox15.Checked),Convert.ToInt32(checkBox16.Checked) },
             };
-
-
-
-
-
             if (IsCorrectMatrix(matrix))
             {
                 Figure.listTypeFigures.Add(matrix);
@@ -347,7 +195,6 @@ namespace WinFormsApp1
             {
                 rulesLabel.ForeColor = Color.Red;
             }
-
         }
         private bool IsCorrectMatrix(int[,] matrix)
         {
@@ -385,9 +232,6 @@ namespace WinFormsApp1
           
         }
 
-        private void CreateNewBlockButton_Click(object sender, EventArgs e)
-        {
-            CreateKindOfFigere();
-        }
+
     }
 }
