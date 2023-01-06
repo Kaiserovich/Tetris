@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Reflection.Emit;
 using System.Xml.Serialization;
 using Microsoft.VisualBasic;
+using System.Diagnostics;
 
 namespace WinFormsApp1
 {
@@ -49,13 +50,17 @@ namespace WinFormsApp1
             mapHeight = int.Parse(sizeFieldYTextBox.Text);
 
             borderX = 200;
-            borderY = 20;
+            borderY = 150;
             map = new int[mapWidth, mapHeight];
             linesRemoved = 0;
             score = 0;
 
-            currentFigure = new Figure(mapWidth/2,0);
+            currentFigure = new Figure(mapWidth / 2, 0);
 
+            fallingSpeedNormal = 500;
+            fallingSpeedNormalLimit = 100;
+            fallingSpeedNormalStepIncrease = 10;
+            fallingSpeedFast = 40;
 
             StartTime();
             UpdateLabels();
@@ -64,21 +69,20 @@ namespace WinFormsApp1
         public void StopGame()
         {
             ClearMap();
-            timerFalling.Tick -= new EventHandler(Update);
-            timerFalling.Stop();
+            StopTime();
         }
 
         public void StartTime()
         {
-            fallingSpeedNormal = 500;
-            fallingSpeedNormalLimit = 100;
-            fallingSpeedNormalStepIncrease = 10;
-            fallingSpeedFast = 40;
-
             timerFalling.Interval = fallingSpeedNormal;
             timerFalling.Tick += new EventHandler(Update);
             timerFalling.Start();
+        }
 
+        public void StopTime()
+        {
+            timerFalling.Tick -= new EventHandler(Update);
+            timerFalling.Stop();
         }
 
         private void KeyFunc(object? sender, KeyEventArgs key)
@@ -109,7 +113,7 @@ namespace WinFormsApp1
 
         private void Update(object? sender, EventArgs e)
         {
-            ResetArea(); 
+            ResetArea();
             if (!Collide())
                 currentFigure.MoveDown();
             else
@@ -140,30 +144,30 @@ namespace WinFormsApp1
         {
             for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
                 for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                   if (currentFigure.matrix[ j - currentFigure.y, i - currentFigure.x] != 0)
-                        map[i, j] = currentFigure.matrix[j - currentFigure.y,i - currentFigure.x];
+                    if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
+                        map[i, j] = currentFigure.matrix[j - currentFigure.y, i - currentFigure.x];
         }
         public void ResetArea()
         {
             for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
                 for (int j = currentFigure.y; j < currentFigure.y + currentFigure.sizeMatrix; j++)
-                   if (i >= 0 && j >= 0 && i < mapWidth && j < mapHeight)
+                    if (i >= 0 && j >= 0 && i < mapWidth && j < mapHeight)
                         if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
                             map[i, j] = 0;
         }
         public bool Collide()
         {
             for (int i = currentFigure.x; i < currentFigure.x + currentFigure.sizeMatrix; i++)
-                for (int j = currentFigure.y + currentFigure.sizeMatrix - 1; j >= currentFigure.y; j--) 
+                for (int j = currentFigure.y + currentFigure.sizeMatrix - 1; j >= currentFigure.y; j--)
                     if (currentFigure.matrix[j - currentFigure.y, i - currentFigure.x] != 0)
                     {
                         if (j + 1 == mapHeight)
                             return true;
 
-                        if (map[i, j+1] != 0)
+                        if (map[i, j + 1] != 0)
                             return true;
                     }
-                    
+
             return false;
         }
 
@@ -198,7 +202,7 @@ namespace WinFormsApp1
             {
                 for (int j = 0; j < mapWidth; j++)
                 {
-                    if (map[j,i] != 0)
+                    if (map[j, i] != 0)
                         count++;
                 }
                 if (count == mapWidth)
@@ -209,7 +213,7 @@ namespace WinFormsApp1
                     {
                         for (int k = 0; k < mapWidth; k++)
                         {
-                            map[k,o] = map[k,o-1];
+                            map[k, o] = map[k, o - 1];
                         }
                     }
                 }
@@ -217,16 +221,15 @@ namespace WinFormsApp1
 
             for (int i = 1; i <= curLinesRemoved; i++)
             {
-                score += 10 * i; 
+                score += 10 * i;
             }
             linesRemoved += curLinesRemoved;
-
 
             IncreaseSpeed();
 
             UpdateLabels();
         }
-        public void IncreaseSpeed() 
+        public void IncreaseSpeed()
         {
             if (fallingSpeedNormal > fallingSpeedNormalLimit)
                 fallingSpeedNormal -= fallingSpeedNormalStepIncrease;
@@ -241,7 +244,7 @@ namespace WinFormsApp1
         public void DrawMap(Graphics graphics)
         {
             for (int i = 0; i < mapWidth; i++)
-                for (int j = 0; j < mapHeight; j++) 
+                for (int j = 0; j < mapHeight; j++)
                     if (map[i, j] != 0)
                         graphics.FillRectangle(GetBrush(map[i, j]), new Rectangle(borderX + i * sizeSquare, borderY + j * sizeSquare, sizeSquare - 1, sizeSquare - 1));
         }
@@ -250,13 +253,13 @@ namespace WinFormsApp1
             for (int i = 0; i <= mapHeight; i++)
                 graphics.DrawLine(Pens.Black, new Point(borderX, borderY + i * sizeSquare), new Point(borderX + mapWidth * sizeSquare, borderY + i * sizeSquare));
 
-            for (int i = 0; i <= mapWidth ; i++)
+            for (int i = 0; i <= mapWidth; i++)
                 graphics.DrawLine(Pens.Black, new Point(borderX + i * sizeSquare, borderY), new Point(borderX + i * sizeSquare, borderY + mapHeight * sizeSquare));
         }
 
         private void OnPaint(object sender, PaintEventArgs e)
         {
-           DrawGrid(e.Graphics);
+            DrawGrid(e.Graphics);
             DrawMap(e.Graphics);
         }
 
@@ -293,7 +296,7 @@ namespace WinFormsApp1
                 ChangeStateStartAndStopButtons();
                 StartGame();
             }
-           
+
         }
         private bool CheckFieldSize()
         {
@@ -321,9 +324,70 @@ namespace WinFormsApp1
             startButton.Enabled = !startButton.Enabled;
         }
 
-        private void errorLabel_Click(object sender, EventArgs e)
+        private void CreateKindOfFigere()
         {
 
+            int[,] matrix = new int[4, 4]{
+                { Convert.ToInt32(checkBox1.Checked),Convert.ToInt32(checkBox2.Checked),Convert.ToInt32(checkBox3.Checked), Convert.ToInt32(checkBox4.Checked) },
+                { Convert.ToInt32(checkBox5.Checked),Convert.ToInt32(checkBox6.Checked),Convert.ToInt32(checkBox7.Checked),Convert.ToInt32(checkBox8.Checked) },
+                { Convert.ToInt32(checkBox9.Checked),Convert.ToInt32(checkBox10.Checked),Convert.ToInt32(checkBox11.Checked),Convert.ToInt32(checkBox12.Checked) },
+                { Convert.ToInt32(checkBox13.Checked),Convert.ToInt32(checkBox14.Checked),Convert.ToInt32(checkBox15.Checked),Convert.ToInt32(checkBox16.Checked) },
+            };
+
+
+
+
+
+            if (IsCorrectMatrix(matrix))
+            {
+                Figure.listTypeFigures.Add(matrix);
+                rulesLabel.ForeColor = Color.Black;
+            }
+            else
+            {
+                rulesLabel.ForeColor = Color.Red;
+            }
+
+        }
+        private bool IsCorrectMatrix(int[,] matrix)
+        {
+            int countActiveElements = 0;
+            int sizeMatrix = (int)Math.Sqrt(matrix.Length);
+
+            for (int i = 0; i < sizeMatrix; i++)
+                for (int j = 0; j < sizeMatrix; j++)
+                {
+                    if (matrix[i, j] != 0)
+                    {
+                        if (i != 0 && matrix[i - 1, j] != 0)
+                            matrix[i, j]++;
+                        if (j != 0 && matrix[i, j - 1] != 0)
+                            matrix[i, j]++;
+                        if (i != sizeMatrix - 1 && matrix[i + 1, j] != 0)
+                            matrix[i, j]++;
+                        if (j != sizeMatrix - 1 && matrix[i, j + 1] != 0)
+                            matrix[i, j]++;
+                    }
+                }
+
+            for (int i = 0; i < sizeMatrix; i++)
+                for (int j = 0; j < sizeMatrix; j++)
+                {
+                    if (matrix[i, j] == 1)
+                        return false;
+                    if (matrix[i, j] != 0)
+                        countActiveElements++;
+                }
+            if (countActiveElements > 8)
+                return false;
+
+            return true;
+          
+        }
+
+        private void CreateNewBlockButton_Click(object sender, EventArgs e)
+        {
+            CreateKindOfFigere();
         }
     }
 }

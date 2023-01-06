@@ -14,64 +14,62 @@ namespace WinFormsApp1
         public int sizeMatrix;
 
 
-        public int[,] tetr1 = new int[4, 4]{
-            {0,0,1,0  },
-            {0,0,1,0  },
-            {0,0,1,0  },
-            {0,0,1,0  },
-        };
+        public static List<int[,]> listTypeFigures = FillingOfList();
 
-        public int[,] tetr2 = new int[3, 3]{
-            {0,2,0  },
-            {0,2,2 },
-            {0,0,2 },
-        };
-
-        public int[,] tetr3 = new int[3, 3]{
-            {0,0,0  },
-            {3,3,3 },
-            {0,3,0 },
-        };
-
-        public int[,] tetr4 = new int[3, 3]{
-            { 4,0,0  },
-            {4,0,0 },
-            {4,4,0 },
-        };
-        public int[,] tetr5 = new int[2, 2]{
-            { 5,5  },
-            {5,5 },
-        };
         public Figure(int x, int y)
         {
             this.x = x;
             this.y = y;
             matrix = GenerateMatrix();
-            sizeMatrix = (int)Math.Sqrt(matrix.Length);
+            sizeMatrix = (int)Math.Sqrt(matrix.Length); ;
+        }
+
+        private static List<int[,]> FillingOfList()
+        {
+            listTypeFigures = new List<int[,]>();
+
+            int[,] tetr1 = new int[4, 4]{
+                { 0,0,1,0 },
+                { 0,0,1,0 },
+                { 0,0,1,0 },
+                { 0,0,1,0 },
+            };
+
+            int[,] tetr2 = new int[3, 3]{
+                { 0,2,0 },
+                { 0,2,2 },
+                { 0,0,2 },
+            };
+
+            int[,] tetr3 = new int[3, 3]{
+                { 0,0,0 },
+                { 3,3,3 },
+                { 0,3,0 },
+            };
+
+            int[,] tetr4 = new int[3, 3]{
+                { 4,0,0 },
+                { 4,0,0 },
+                { 4,4,0 },
+            };
+            int[,] tetr5 = new int[2, 2]{
+                { 5,5 },
+                { 5,5 },
+            };
+
+            listTypeFigures.Add(tetr1);
+            listTypeFigures.Add(tetr2);
+            listTypeFigures.Add(tetr3);
+            listTypeFigures.Add(tetr4);
+            listTypeFigures.Add(tetr5);
+
+            return listTypeFigures;
         }
         public int[,] GenerateMatrix()
         {
-            int[,] matrix = tetr1;
             Random r = new Random();
-            switch (r.Next(1, 6))
-            {
-                case 1:
-                    matrix = tetr1;
-                    break;
-                case 2:
-                    matrix = tetr2;
-                    break;
-                case 3:
-                    matrix = tetr3;
-                    break;
-                case 4:
-                    matrix = tetr4;
-                    break;
-                case 5:
-                    matrix = tetr5;
-                    break;
-            }
-            return matrix;
+            int[,] _matrix; ;
+            return _matrix = listTypeFigures[r.Next(0, listTypeFigures.Count)];
         }
 
 
@@ -83,12 +81,9 @@ namespace WinFormsApp1
         {
             int[,] tempMatrix = new int[sizeMatrix, sizeMatrix];
             for (int i = 0; i < sizeMatrix; i++)
-            {
                 for (int j = 0; j < sizeMatrix; j++)
-                {
                     tempMatrix[i, j] = matrix[j, (sizeMatrix - 1) - i];
-                }
-            }
+
             matrix = tempMatrix;
         }
     }
